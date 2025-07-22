@@ -1,23 +1,26 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.30;
 
-import { Core } from "./Core.sol";
-import { Reward } from "./Reward.sol";
+import { Proxy } from "./Proxy.sol";
+import { IMarket } from "./interfaces/IMarket.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 
 contract Factory is Ownable {
-    Core public coreContract;
-    Reward public rewardContract;
+    address public immutable marketImplementation;
+    address[] public markets;
 
     event MarketCreated(address indexed marketAddress);
 
-    error InvalidTokenAddress(address token);
-    error InvalidMaxSupply(uint256 maxSupply);
-    error InvalidMaturity(uint256 maturity);
-    error InvalidNameOrSymbol(string name, string symbol);
-    
-    constructor() Ownable(msg.sender) {}
+    error ZeroAddress();
+    error ZeroMaxSupply();
+    error InvalidMaturity();
+    error EmptyString();
+    error NotMatured();
+
+    constructor(address _marketImplementation) Ownable(msg.sender) {
+        marketImplementation = _marketImplementation;
+    }
 
     function createMarket (
         address tokenAccepted,
@@ -26,14 +29,56 @@ contract Factory is Ownable {
         uint256 maxSupply,
         uint256 maturity
     ) external onlyOwner {
-        if (tokenAccepted == address(0)) revert InvalidTokenAddress(tokenAccepted);
-        if (maxSupply == 0) revert InvalidMaxSupply(maxSupply);
-        if (maturity <= block.timestamp) revert InvalidMaturity(maturity);
-        if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidNameOrSymbol(name, symbol);
+        if (tokenAccepted == address(0)) revert ZeroAddress();
+        if (maxSupply == 0) revert ZeroMaxSupply();
+        if (maturity <= block.timestamp) revert InvalidMaturity();
+        if (bytes(name).length == 0 || bytes(symbol).length == 0) revert EmptyString();
 
-        coreContract = new Core(tokenAccepted, name, symbol, maxSupply, maturity);
-        rewardContract = new Reward(tokenAccepted, name, symbol, maxSupply, maturity);
+        bytes memory initData = abi.encodeWithSignature(
+            "initialize(address,address,string,string,uint256,uint256)",
+            address(this),
+            tokenAccepted,
+            name,
+            symbol,
+            maxSupply,
+            maturity
+        );
 
-        emit MarketCreated(address(coreContract));
+        Proxy market = new Proxy(marketImplementation, initData);
+
+        markets.push(address(market));
+
+        emit MarketCreated(address(market));
+    }
+
+    function maturedMarket(address marketAddress) external {
+        if (block.timestamp < IMarket(marketAddress).maturity()) revert NotMatured();
+
+        IMarket(marketAddress).maturedMarket();
+    }
+
+
+    function getMarketsLength() external view returns (uint256) {
+        return markets.length;
+    }
+
+    function getActiveMarkets() external view returns (address[] memory) {
+        uint256 len = markets.length;
+        uint256 count;
+
+        for (uint256 i; i < len; ++i) {
+            if (IMarket(markets[i]).isActive()) count++;
+        }
+
+        address[] memory result = new address[](count);
+        uint256 idx;
+
+        for (uint256 i; i < len; ++i) {
+            if (IMarket(markets[i]).isActive()) {
+                result[idx] = markets[i];
+                unchecked { ++idx; }
+            }
+        }
+        return result;
     }
 }

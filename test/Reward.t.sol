@@ -2,13 +2,16 @@
 pragma solidity ^0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
-import { Core } from "../src/Core.sol";
+import { Market } from "../src/Market.sol";
+import { Factory } from "../src/Factory.sol";
 import { Reward } from "../src/Reward.sol";
 import { MockUSDT } from "../src/mocks/MockUSDT.sol";
 
 
 contract RewardTest is Test {
-    Core public core;
+    Market public market;
+    Market public marketImplementation;
+    Factory public factory;
     Reward public reward;
     MockUSDT public usdt;
 
@@ -20,8 +23,20 @@ contract RewardTest is Test {
         vm.deal(owner, 1 ether);
 
         usdt = new MockUSDT();
-        core = new Core(address(usdt), "FR-A", "FRA", 1_000_000, block.timestamp + 365 days);
-        reward = new Reward(address(usdt), "Reward Token", "RWT", 1_000_000, block.timestamp + 365 days);
+        marketImplementation = new Market();
+        factory = new Factory(address(marketImplementation));
+        
+        factory.createMarket(
+            address(usdt),
+            "FR-A",
+            "FRA",
+            1_000_000,
+            block.timestamp + 365 days
+        );
+        
+        address marketAddress = factory.markets(0);
+        market = Market(marketAddress);
+        reward = Reward(market.rewardAddress());
 
         usdt.mint(alice, 1_000_000);
         usdt.mint(bob, 1_000_000);
@@ -41,8 +56,8 @@ contract RewardTest is Test {
         reward.injectReward(1000);
 
         vm.startPrank(alice);
-        usdt.approve(address(reward), 100);
-        reward.deposit(alice, address(usdt), 100);
+        usdt.approve(address(market), 100);
+        market.deposit(alice, address(usdt), 100);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 90 days);
@@ -58,43 +73,43 @@ contract RewardTest is Test {
         reward.injectReward(1000);
 
         vm.startPrank(alice);
-        usdt.approve(address(reward), 10_000);
-        reward.deposit(alice, address(usdt), 10_000);
+        usdt.approve(address(market), 10_000);
+        market.deposit(alice, address(usdt), 10_000);
         vm.stopPrank();
 
         vm.startPrank(bob);
-        usdt.approve(address(reward), 10_000);
-        reward.deposit(bob, address(usdt), 10_000);
+        usdt.approve(address(market), 10_000);
+        market.deposit(bob, address(usdt), 10_000);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 90 days);
         reward.distribute();
 
         vm.startPrank(alice);
-        uint256 aliceReward = reward.checkRewards(alice);
+        uint256 aliceReward = reward.earned(alice);
         vm.stopPrank();
-        console.log("Reward before claim:", aliceReward);
+        console.log("Alice's reward before claim:", aliceReward);
 
         vm.startPrank(bob);
-        uint256 bobReward = reward.checkRewards(bob);
+        uint256 bobReward = reward.earned(bob);
         vm.stopPrank();
-        console.log("Reward before claim:", bobReward);
+        console.log("Bob's reward before claim:", bobReward);
 
         vm.startPrank(alice);
-        uint256 initialAliceReward = reward.checkRewards(alice);
+        uint256 initialAliceReward = reward.earned(alice);
         uint256 balanceAliceBefore = usdt.balanceOf(alice);
         reward.claimReward();
         vm.stopPrank();
         assertEq(usdt.balanceOf(alice), balanceAliceBefore + initialAliceReward);
-        assertEq(reward.checkRewards(alice), 0);
+        assertEq(reward.earned(alice), 0);
 
         vm.startPrank(bob);
-        uint256 initialBobReward = reward.checkRewards(bob);
+        uint256 initialBobReward = reward.earned(bob);
         uint256 balanceBobBefore = usdt.balanceOf(bob);
         reward.claimReward();
         vm.stopPrank();
         assertEq(usdt.balanceOf(bob), balanceBobBefore + initialBobReward);
-        assertEq(reward.checkRewards(bob), 0);
+        assertEq(reward.earned(bob), 0);
     }
 
 }

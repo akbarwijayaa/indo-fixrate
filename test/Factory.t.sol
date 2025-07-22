@@ -3,11 +3,15 @@ pragma solidity ^0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
 import { Factory } from "../src/Factory.sol";
+import { Market } from "../src/Market.sol";
 import { MockUSDT } from "../src/mocks/MockUSDT.sol";
+import { Router } from "../src/Router.sol";
 
 
 contract FactoryTest is Test {
     Factory public factory;
+    Market public marketImplementation;
+    Router public router;
     MockUSDT public usdt;
 
     address public owner = address(0x0);
@@ -23,16 +27,32 @@ contract FactoryTest is Test {
         usdt = new MockUSDT();
         tokenAccepted = address(usdt);
         
-        factory = new Factory();
+        marketImplementation = new Market();
+        factory = new Factory(address(marketImplementation));
+        router = new Router(address(factory));
     }
 
     function testCreateMarket() public {
         factory.createMarket(tokenAccepted, name, symbol, maxSupply, maturity);
 
-        assertEq(factory.coreContract().name(), name);
-        assertEq(factory.coreContract().symbol(), symbol);
-        assertEq(factory.coreContract().maxSupply(), maxSupply);
-        assertEq(factory.coreContract().maturity(), maturity);
+        assertEq(factory.markets(0), address(router.getActiveMarkets()[0]));
+    }
+
+    function testGetActiveMarkets() public {
+        factory.createMarket(tokenAccepted, name, symbol, maxSupply, maturity);
+        factory.createMarket(tokenAccepted, name, symbol, maxSupply, maturity);
+        address[] memory activeMarkets = router.getActiveMarkets();
+
+        assertEq(activeMarkets.length, 2);
+    }
+
+    function testDeactivateMarketAndCheckActiveMarket() public {
+        factory.createMarket(tokenAccepted, name, symbol, maxSupply, maturity);
+        vm.warp(block.timestamp + 365 days);
+        factory.maturedMarket(factory.markets(0));
+        address[] memory activeMarkets = router.getActiveMarkets();
+
+        assertEq(activeMarkets.length, 0);
     }
 
     function testNonAutorizedCreateMarket() public {
