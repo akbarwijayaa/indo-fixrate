@@ -33,7 +33,7 @@ contract Reward is Ownable{
 
         IERC20(IMarket(market).tokenAccepted()).transferFrom(msg.sender, address(this), amount);
         _distribute();
-        
+
         emit RewardInjected(amount);
     }
     
@@ -64,13 +64,13 @@ contract Reward is Ownable{
         updateReward(account);
     }
 
-    function claimReward() public {
-        updateReward(msg.sender);
-        uint256 reward = rewards[msg.sender];
+    function claimReward(address account) public {
+        updateReward(account);
+        uint256 reward = rewards[account];
         if (reward == 0) revert NoRewardToClaim();
-        rewards[msg.sender] = 0;
+        rewards[account] = 0;
 
-        IERC20(IMarket(market).tokenAccepted()).transfer(msg.sender, reward);
+        IERC20(IMarket(market).tokenAccepted()).transfer(account, reward);
 
     }
 

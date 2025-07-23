@@ -5,12 +5,15 @@ import {Test, console} from "forge-std/Test.sol";
 import { Router } from "../src/Router.sol";
 import { Factory } from "../src/Factory.sol";
 import { Market } from "../src/Market.sol";
+import { Reward } from "../src/Reward.sol";
 import { MockUSDT } from "../src/mocks/MockUSDT.sol";
 
-contract RouterDepositTest is Test {
+contract RouterTest is Test {
     Router public router;
     Factory public factory;
     Market public marketImplementation;
+    Market public market;
+    Reward public reward;
     MockUSDT public usdt;
     
     address public alice = address(0x1);
@@ -32,6 +35,8 @@ contract RouterDepositTest is Test {
         );
 
         marketAddress = factory.markets(0);
+        market = Market(marketAddress);
+        reward = Reward(market.rewardAddress());
 
         usdt.mint(alice, 10_000);
         usdt.mint(bob, 10_000);
@@ -120,13 +125,10 @@ contract RouterDepositTest is Test {
         address expiredMarketAddress = factory.markets(1);
         
         vm.warp(block.timestamp + 101);
-        
         factory.maturedMarket(expiredMarketAddress);
         
         vm.startPrank(alice);
-        
         usdt.approve(address(router), 1000);
-        
         vm.expectRevert(Router.MarketNotActive.selector);
         router.deposit(expiredMarketAddress, alice, 1000);
         
@@ -148,6 +150,23 @@ contract RouterDepositTest is Test {
         assertEq(usdt.balanceOf(alice), initialAliceUsdtBalance - depositAmount);
         assertEq(Market(marketAddress).balanceOf(bob), initialBobMarketBalance + depositAmount);
         assertEq(Market(marketAddress).balanceOf(alice), 0); // Alice should have no market tokens
+        
+        vm.stopPrank();
+    }
+
+    function testDepositAndRedeem() public {
+        uint256 depositAmount = 1000;
+        uint256 redeemAmount = 500;
+
+        vm.startPrank(alice);
+        
+        usdt.approve(address(router), depositAmount);
+        router.deposit(marketAddress, alice, depositAmount);
+        
+        uint256 initialMarketBalance = Market(marketAddress).balanceOf(alice);
+        router.redeem(marketAddress, alice, redeemAmount);
+        
+        assertEq(Market(marketAddress).balanceOf(alice), initialMarketBalance - redeemAmount);
         
         vm.stopPrank();
     }

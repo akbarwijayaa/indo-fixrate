@@ -93,7 +93,7 @@ contract RewardTest is Test {
         vm.startPrank(alice);
         uint256 initialAliceReward = reward.earned(alice);
         uint256 balanceAliceBefore = usdt.balanceOf(alice);
-        reward.claimReward();
+        reward.claimReward(address(alice));
         vm.stopPrank();
         assertEq(usdt.balanceOf(alice), balanceAliceBefore + initialAliceReward);
         assertEq(reward.earned(alice), 0);
@@ -101,7 +101,7 @@ contract RewardTest is Test {
         vm.startPrank(bob);
         uint256 initialBobReward = reward.earned(bob);
         uint256 balanceBobBefore = usdt.balanceOf(bob);
-        reward.claimReward();
+        reward.claimReward(address(bob));
         vm.stopPrank();
         assertEq(usdt.balanceOf(bob), balanceBobBefore + initialBobReward);
         assertEq(reward.earned(bob), 0);
