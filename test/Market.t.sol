@@ -55,6 +55,7 @@ contract MarketTest is Test {
         market.deposit(alice, address(usdt), 100);
 
         assertEq(market.totalSupply(), initialSupply + 100);
+        assertEq(market.balanceOf(alice), 100);
     }
 
     function testRedeem() public {

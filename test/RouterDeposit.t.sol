@@ -74,7 +74,7 @@ contract RouterDepositTest is Test {
         vm.stopPrank();
     }
 
-    function testGetMarketInfo() public {
+    function testGetMarketInfo() public view {
         (
             address tokenAccepted,
             uint256 maxSupply,

@@ -42,36 +42,30 @@ contract RewardTest is Test {
         usdt.mint(bob, 1_000_000);
     }
 
-    function testInjectReward() public {
+    function testInjectRewardWithNoTokensMinted() public {
         usdt.mint(address(this), 1000);
         usdt.approve(address(reward), 1000);
+        vm.expectRevert(Reward.NoTokensMinted.selector);
         reward.injectReward(1000);
 
-        assertEq(usdt.balanceOf(address(reward)), 1000);
+        assertEq(usdt.balanceOf(address(reward)), 0);
     }
 
     function testDistributeReward() public {
-        usdt.mint(address(this), 1000);
-        usdt.approve(address(reward), 1000);
-        reward.injectReward(1000);
-
         vm.startPrank(alice);
         usdt.approve(address(market), 100);
         market.deposit(alice, address(usdt), 100);
         vm.stopPrank();
 
-        vm.warp(block.timestamp + 90 days);
-        reward.distribute();
+        usdt.mint(address(this), 1000);
+        usdt.approve(address(reward), 1000);
+        reward.injectReward(1000);
 
         assertGt(reward.rewardPerTokenStored(), 0);
         assertEq(reward.lastDistribution(), block.timestamp);
     }
 
     function testClaimReward() public {
-        usdt.mint(address(this), 1000);
-        usdt.approve(address(reward), 1000);
-        reward.injectReward(1000);
-
         vm.startPrank(alice);
         usdt.approve(address(market), 10_000);
         market.deposit(alice, address(usdt), 10_000);
@@ -82,8 +76,9 @@ contract RewardTest is Test {
         market.deposit(bob, address(usdt), 10_000);
         vm.stopPrank();
 
-        vm.warp(block.timestamp + 90 days);
-        reward.distribute();
+        usdt.mint(address(this), 1000);
+        usdt.approve(address(reward), 1000);
+        reward.injectReward(1000);
 
         vm.startPrank(alice);
         uint256 aliceReward = reward.earned(alice);

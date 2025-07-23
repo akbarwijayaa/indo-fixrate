@@ -29,17 +29,18 @@ contract Reward is Ownable{
 
     function injectReward(uint256 amount) external {
         if (amount == 0) revert ZeroAmount();
-        IERC20(IMarket(market).tokenAccepted()).transferFrom(msg.sender, address(this), amount);
+        if (IMarket(market).totalSupply() == 0) revert NoTokensMinted();
 
+        IERC20(IMarket(market).tokenAccepted()).transferFrom(msg.sender, address(this), amount);
+        _distribute();
+        
         emit RewardInjected(amount);
     }
     
 
-    function distribute() external  {
-        if (block.timestamp <= lastDistribution + 90 days) revert TooEarly();
+    function _distribute() internal {
         uint256 balance = IERC20(IMarket(market).tokenAccepted()).balanceOf(address(this));
         uint256 supply = IMarket(market).totalSupply();
-        if(supply == 0) revert NoTokensMinted();
 
         uint256 newReward = balance;
         rewardPerTokenStored += newReward * 1e6 / supply;

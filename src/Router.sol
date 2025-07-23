@@ -56,16 +56,10 @@ contract Router {
         if (!_isValidMarket(marketAddress)) revert MarketNotFound();
         if (!IMarket(marketAddress).isActive()) revert MarketNotActive();
 
-        // Get the token accepted by the market
         address tokenAccepted = IMarket(marketAddress).tokenAccepted();
-        
-        // Transfer tokens from user to this router first
         IERC20(tokenAccepted).transferFrom(msg.sender, address(this), amount);
-        
-        // Approve the market to spend the tokens
         IERC20(tokenAccepted).approve(marketAddress, amount);
-        
-        // Deposit into the market
+
         IMarket(marketAddress).deposit(to, tokenAccepted, amount);
     }
 
@@ -79,7 +73,6 @@ contract Router {
         if (amount == 0) revert InvalidAmount();
         if (!_isValidMarket(marketAddress)) revert MarketNotFound();
 
-        // Call redeem on the market - the market will handle the token transfers
         IMarket(marketAddress).redeem(msg.sender, to, amount);
     }
 
