@@ -9,6 +9,9 @@ import { IFactory } from "./interfaces/IFactory.sol";
 contract Router {
     address public immutable factory;
 
+    event Deposit(address indexed to, uint256 amount);
+    event Redeem(address indexed from, address indexed to, uint256 amount);
+
     error NotMatured();
     error MarketNotFound();
     error MarketNotActive();
@@ -61,6 +64,8 @@ contract Router {
         IERC20(tokenAccepted).approve(marketAddress, amount);
 
         IMarket(marketAddress).deposit(to, tokenAccepted, amount);
+
+        emit Deposit(to, amount);
     }
 
     /**
@@ -74,6 +79,8 @@ contract Router {
         if (!_isValidMarket(marketAddress)) revert MarketNotFound();
 
         IMarket(marketAddress).redeem(msg.sender, to, amount);
+
+        emit Redeem(msg.sender, to, amount);
     }
 
     /**

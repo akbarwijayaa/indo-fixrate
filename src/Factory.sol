@@ -10,7 +10,13 @@ contract Factory is Ownable {
     address public immutable marketImplementation;
     address[] public markets;
 
-    event MarketCreated(address indexed marketAddress);
+    event MarketCreated(
+      address indexed tokenAccepted,
+      string name,
+      string symbol,
+      uint256 maxSupply,
+      uint256 maturity
+    );
 
     error ZeroAddress();
     error ZeroMaxSupply();
@@ -48,7 +54,7 @@ contract Factory is Ownable {
 
         markets.push(address(market));
 
-        emit MarketCreated(address(market));
+        emit MarketCreated(tokenAccepted, name, symbol, maxSupply, maturity);
     }
 
     function maturedMarket(address marketAddress) external {
