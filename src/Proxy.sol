@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.30;
 
-contract Proxy {
+contract MarketProxy {
     constructor(address _implementation, bytes memory _initData) {
         assembly {
             sstore(0x360894A13BA1A3210667C828492DB98DCA3E2076CC3735A920A3CA505D382BBC, _implementation)

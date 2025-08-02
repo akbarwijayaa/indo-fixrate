@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import { Script, console } from "forge-std/Script.sol";
 import { Factory } from "../src/Factory.sol";
-import { Market } from "../src/Market.sol";
+import { MarketImplementation } from "../src/MarketImplementation.sol";
 import { MarketRollover } from "../src/MarketRollover.sol";
 import { Router } from "../src/Router.sol";
 import { MockUSDT } from "../src/mocks/MockUSDT.sol";
@@ -13,7 +13,7 @@ contract Deploy is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
         
-        Market marketImplementation = new Market();
+        MarketImplementation marketImplementation = new MarketImplementation();
         console.log("Market implementation deployed at:", address(marketImplementation));
         
         Factory factory = new Factory(address(marketImplementation));
@@ -30,11 +30,10 @@ contract Deploy is Script {
         
         address tokenAccepted = address(usdt);
         string memory name = "Test Market";
-        string memory symbol = "TMKT";
         uint256 maxSupply = 1_000_000;
         uint256 maturity = block.timestamp + 365 days;
 
-        factory.createMarket(tokenAccepted, name, symbol, maxSupply, maturity);
+        factory.createMarket(name, tokenAccepted, maxSupply, maturity);
         
         vm.stopBroadcast();
     }

@@ -2,19 +2,19 @@
 pragma solidity ^0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
-import { Market } from "../src/Market.sol";
+import { MarketImplementation } from "../src/MarketImplementation.sol";
 import { Factory } from "../src/Factory.sol";
-import { Proxy } from "../src/Proxy.sol";
+import { MarketProxy } from "../src/Proxy.sol";
 import { MockUSDT } from "../src/mocks/MockUSDT.sol";
 
 
-contract MarketTest is Test {
-    Market public market;
-    Market public marketImplementation;
+contract MarketImplementationTest is Test {
+    MarketImplementation public market;
+    MarketImplementation public marketImplementation;
     Factory public factory;
     MockUSDT public usdt;
 
-    address public owner = address(0x0);
+    address public owner = address(0x123);
     address public alice = address(0x1);
     address public bob = address(0x2);
 
@@ -25,24 +25,26 @@ contract MarketTest is Test {
 
         usdt = new MockUSDT();
         
-        // Deploy market implementation
-        marketImplementation = new Market();
+        vm.startPrank(owner);
+
+        marketImplementation = new MarketImplementation();
         
         // Deploy factory with market implementation
         factory = new Factory(address(marketImplementation));
         
         // Create market through factory
         factory.createMarket(
-            address(usdt),
             "FR-A",
-            "FRA",
+            address(usdt),
             1_000_000,
             block.timestamp + 365 days
         );
         
         // Get the created market proxy
         address marketAddress = factory.markets(0);
-        market = Market(marketAddress);
+        market = MarketImplementation(marketAddress);
+
+        vm.stopPrank();
 
         usdt.mint(alice, 1_000_000);
         usdt.mint(bob, 1_000_000);
@@ -50,19 +52,21 @@ contract MarketTest is Test {
 
     function testDeposit() public {
         vm.startPrank(alice);
-        uint256 initialSupply = market.totalSupply();
+        uint256 initialSupply = market.tvl();
         usdt.approve(address(market), 100);
-        market.deposit(alice, address(usdt), 100);
+        market.deposit(alice, address(usdt), 100, block.timestamp + 30 days);
 
-        assertEq(market.totalSupply(), initialSupply + 100);
+        assertEq(market.tvl(), initialSupply + 100);
         assertEq(market.balanceOf(alice), 100);
     }
 
     function testRedeem() public {
         vm.startPrank(alice);
         usdt.approve(address(market), 100);
-        market.deposit(alice, address(usdt), 100);
+        market.deposit(alice, address(usdt), 100, block.timestamp + 30 days);
         uint256 initialBalance = market.balanceOf(alice);
+
+        skip(30 days);
 
         market.redeem(alice, alice, 50);
         assertEq(market.balanceOf(alice), initialBalance - 50);
@@ -72,7 +76,13 @@ contract MarketTest is Test {
         vm.startPrank(alice);
         usdt.approve(address(market), 2_000_000);
         vm.expectRevert();
-        market.deposit(alice, address(usdt), 2_000_000);
+        market.deposit(alice, address(usdt), 2_000_000, block.timestamp + 30 days);
+    }
+
+    function testMaturedMarket() public {
+        skip(365 days);
+        vm.expectRevert();
+        market.maturedMarket();
     }
 
 

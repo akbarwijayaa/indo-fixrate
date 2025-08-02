@@ -3,14 +3,14 @@ pragma solidity ^0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
 import { MarketRollover } from "../src/MarketRollover.sol";
-import { Market } from "../src/Market.sol";
+import { MarketImplementation } from "../src/MarketImplementation.sol";
 import { Factory } from "../src/Factory.sol";
 import { MockUSDT } from "../src/mocks/MockUSDT.sol";
 
 
 contract MarketRolloverTest is Test {
-    Market public market;
-    Market public marketImplementation;
+    MarketImplementation public market;
+    MarketImplementation public marketImplementation;
     MockUSDT public usdt;
     MarketRollover public marketRollover;
     Factory public factory;
@@ -19,24 +19,18 @@ contract MarketRolloverTest is Test {
     function setUp() public {
         usdt = new MockUSDT();
         
-        // Deploy market implementation
-        marketImplementation = new Market();
-        
-        // Deploy factory with market implementation
+        marketImplementation = new MarketImplementation();
         factory = new Factory(address(marketImplementation));
         
-        // Create market through factory
         factory.createMarket(
-            address(usdt),
             "Test Market",
-            "TMKT",
+            address(usdt),
             1_000_000,
             block.timestamp + 365 days
         );
         
-        // Get the created market proxy
         address marketAddress = factory.markets(0);
-        market = Market(marketAddress);
+        market = MarketImplementation(marketAddress);
         
         marketRollover = new MarketRollover();
 
@@ -48,16 +42,15 @@ contract MarketRolloverTest is Test {
 
         vm.startPrank(alice);
         usdt.approve(oldMarketAddr, 1000);
-        market.deposit(alice, address(usdt), 1000);
-       
-        vm.warp(block.timestamp + 366 days);
+        market.deposit(alice, address(usdt), 1000, 365 days);
         vm.stopPrank();
+        
+        skip(365 days);
 
         // Create new market through factory for rollover (as owner, not alice)
         factory.createMarket(
-            address(usdt),
             "New Market",
-            "NWMKT",
+            address(usdt),
             1_000_000,
             block.timestamp + 365 days
         );
@@ -65,7 +58,7 @@ contract MarketRolloverTest is Test {
         address newMarketAddress = factory.markets(1);
 
         vm.startPrank(alice);
-        marketRollover.rollover(oldMarketAddr, newMarketAddress, 1000);
+        marketRollover.rollover(oldMarketAddr, newMarketAddress, 1000, 30 days);
 
         assertEq(usdt.balanceOf(newMarketAddress), 1000);
         assertEq(market.balanceOf(alice), 0);
@@ -78,9 +71,8 @@ contract MarketRolloverTest is Test {
         
         // Create new market through factory for rollover
         factory.createMarket(
-            address(usdt),
             "New Market",
-            "NWMKT",
+            address(usdt),
             1_000_000,
             block.timestamp + 365 days
         );
@@ -89,10 +81,10 @@ contract MarketRolloverTest is Test {
 
         vm.startPrank(alice);
         usdt.approve(oldMarketAddr, 1000);
-        market.deposit(alice, address(usdt), 1000);
+        market.deposit(alice, address(usdt), 1000, 30 days);
 
         vm.expectRevert(MarketRollover.MarketNotMatured.selector);
-        marketRollover.rollover(oldMarketAddr, newMarketAddress, 1000);
+        marketRollover.rollover(oldMarketAddr, newMarketAddress, 1000, 30 days);
 
         vm.stopPrank();
     }

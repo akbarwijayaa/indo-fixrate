@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 interface IMarket {
-    function deposit(address to, address tokenIn, uint256 amount) external;
+    function deposit(address to, address tokenIn, uint256 amount, uint256 lockPeriod) external;
     function redeem(address owner, address to, uint256 amount) external;
     function isMatured() external view returns (bool);
     function maturedMarket() external;
@@ -11,7 +11,7 @@ interface IMarket {
     function maxSupply() external view returns (uint256);
     function maturity() external view returns (uint256);
     function isActive() external view returns (bool);
-    function totalSupply() external view returns (uint256);
+    function tvl() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
     function rewardAddress() external view returns (address);
 }

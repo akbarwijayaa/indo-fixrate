@@ -54,7 +54,7 @@ contract Router {
      * @param to The recipient address for the market tokens
      * @param amount The amount of tokens to deposit
      */
-    function deposit(address marketAddress, address to, uint256 amount) external {
+    function deposit(address marketAddress, address to, uint256 amount, uint256 lockPeriod) external {
         if (amount == 0) revert InvalidAmount();
         if (!_isValidMarket(marketAddress)) revert MarketNotFound();
         if (!IMarket(marketAddress).isActive()) revert MarketNotActive();
@@ -63,7 +63,7 @@ contract Router {
         IERC20(tokenAccepted).transferFrom(msg.sender, address(this), amount);
         IERC20(tokenAccepted).approve(marketAddress, amount);
 
-        IMarket(marketAddress).deposit(to, tokenAccepted, amount);
+        IMarket(marketAddress).deposit(to, tokenAccepted, amount, lockPeriod);
 
         emit Deposit(to, amount);
     }

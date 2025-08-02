@@ -21,15 +21,16 @@ contract Reward is Ownable{
     error TooEarly();
     error NoTokensMinted();
     error NoRewardToClaim();
+    error NotMarketCaller();
 
-    constructor(address _marketAddress) Ownable(msg.sender){
+    constructor(address owner, address _marketAddress) Ownable(owner){
         market = _marketAddress;
     }
 
 
-    function injectReward(uint256 amount) external {
+    function injectReward(uint256 amount) external onlyOwner{
         if (amount == 0) revert ZeroAmount();
-        if (IMarket(market).totalSupply() == 0) revert NoTokensMinted();
+        if (IMarket(market).tvl() == 0) revert NoTokensMinted();
 
         IERC20(IMarket(market).tokenAccepted()).transferFrom(msg.sender, address(this), amount);
         _distribute();
@@ -40,7 +41,7 @@ contract Reward is Ownable{
 
     function _distribute() internal {
         uint256 balance = IERC20(IMarket(market).tokenAccepted()).balanceOf(address(this));
-        uint256 supply = IMarket(market).totalSupply();
+        uint256 supply = IMarket(market).tvl();
 
         uint256 newReward = balance;
         rewardPerTokenStored += newReward * 1e6 / supply;
@@ -60,7 +61,7 @@ contract Reward is Ownable{
         userRewardPerTokenPaid[account] = rewardPerTokenStored;
     }
 
-    function _updateReward(address account) external onlyOwner {
+    function _updateReward(address account) external onlyMarket {
         updateReward(account);
     }
 
@@ -72,6 +73,11 @@ contract Reward is Ownable{
 
         IERC20(IMarket(market).tokenAccepted()).transfer(account, reward);
 
+    }
+
+    modifier onlyMarket() {
+        if (msg.sender != market) revert NotMarketCaller();
+        _;
     }
 
 }
