@@ -24,6 +24,8 @@ contract MarketImplementation is Initializable, OwnableUpgradeable {
 
     event Deposit(address indexed to, uint256 amount);
     event Withdraw(address indexed from, address indexed to, uint256 amount);
+    event DepositAsOwner(uint256 amount);
+    event WithdrawToOwner(address indexed from, address indexed to, uint256 amount);
 
     error TokenNotAccepted();
     error MaxSupplyExceeded();
@@ -34,6 +36,7 @@ contract MarketImplementation is Initializable, OwnableUpgradeable {
     error StillLockedPeriod();
     error OnlyFactoryCaller();
     error AlreadyInitialized();
+    error ZeroAmount();
 
     function initialize(
         address owner,
@@ -85,6 +88,23 @@ contract MarketImplementation is Initializable, OwnableUpgradeable {
         IERC20(tokenAccepted).transfer(to, amount);
         Reward(rewardAddress)._updateReward(owner);
         emit Withdraw(owner, to, amount);
+    }
+
+
+    function depositAsOwner(uint256 amount) external onlyOwner {
+        if (amount == 0) revert ZeroAmount();
+
+        IERC20(tokenAccepted).transferFrom(msg.sender, address(this), amount);
+        emit DepositAsOwner(amount);
+    }
+    
+
+    function redeemToOwner(uint256 amount) external onlyOwner {
+        if (amount == 0) revert ZeroAmount();
+        if (amount > IERC20(tokenAccepted).balanceOf(address(this))) revert InsufficientBalance();
+
+        IERC20(tokenAccepted).transfer(msg.sender, amount);
+        emit WithdrawToOwner(address(this), msg.sender, amount);
     }
 
     function isMatured() external view returns (bool) {

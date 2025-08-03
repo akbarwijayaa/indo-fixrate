@@ -118,7 +118,7 @@ contract RouterTest is Test {
         vm.stopPrank();
     }
 
-    function testInitialOwner() public {
+    function testInitialOwner() public view {
         console.log("Factory address:", address(factory));
         console.log("Owner of Factory:", factory.owner());
         console.log("Market address:", marketAddress);
